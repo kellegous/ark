@@ -32,6 +32,7 @@ var verbs = map[string]Verb{
 	"HEAD":    Head,
 	"OPTIONS": Options,
 	"PATCH":   Patch,
+	"POST":    Post,
 	"PUT":     Put,
 }
 
@@ -161,5 +162,5 @@ func (r *router) Build() http.Handler {
 
 // New ...
 func New() Builder {
-  return &router{}
+	return &router{}
 }

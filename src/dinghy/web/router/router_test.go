@@ -67,8 +67,8 @@ func dispatch(h http.Handler, verb, path string) int {
 	}
 
 	res := respWriter{
-    header: http.Header(map[string][]string{}),
-  }
+		header: http.Header(map[string][]string{}),
+	}
 
 	h.ServeHTTP(&res, req)
 
@@ -130,4 +130,90 @@ func TestPaths(t *testing.T) {
 		t.Fatalf("expected no call: %v", rec)
 	}
 	rec.clear()
+}
+
+func TestVerbs(t *testing.T) {
+	r := New()
+
+	rec := handler{tags: map[string]bool{}}
+	r.Handle(Post, "/a", rec.handler("POST /a"))
+	r.Handle(Post, "/a/*", rec.handler("POST /a/*"))
+	r.Handle(Delete, "/a", rec.handler("DELETE /a"))
+	r.Handle(Delete, "/a/*", rec.handler("DELETE /a/*"))
+
+	h := r.Build()
+
+	expectDispatch(t, http.StatusMethodNotAllowed, h, "GET", "/a")
+	expectDispatch(t, http.StatusMethodNotAllowed, h, "GET", "/a/b")
+	if !rec.taggedWith() {
+		t.Fatalf("expected no call: %v", rec)
+	}
+	rec.clear()
+
+	expectDispatch(t, http.StatusOK, h, "POST", "/a")
+	if !rec.taggedWith("POST /a") {
+		t.Fatalf("expected POST to /a: %v", rec)
+	}
+	rec.clear()
+
+	expectDispatch(t, http.StatusOK, h, "DELETE", "/a/b")
+	if !rec.taggedWith("DELETE /a/*") {
+		t.Fatalf("expected DELETE to /a/*: %v", rec)
+	}
+	rec.clear()
+}
+
+func TestPrefixNotFound(t *testing.T) {
+	r := New()
+	rec := handler{tags: map[string]bool{}}
+	r.Handle(Get, "/a/", rec.handler("/a/"))
+	expectDispatch(t, http.StatusNotFound, r.Build(), "GET", "/a/b")
+}
+
+func stringArraysEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i, n := 0, len(a); i < n; i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func TestNames(t *testing.T) {
+	r := New()
+
+	rec := handler{tags: map[string]bool{}}
+
+	r.Handle(Get, "/a/*", rec.handler(""))
+	r.Handle(Get, "/a/*/", rec.handler(""))
+	r.Handle(Get, "/a/*/*/*", rec.handler(""))
+	r.Handle(Get, "/a/*/*/*/", rec.handler(""))
+	r.Handle(Get, "/a/*/x", rec.handler(""))
+
+	h := r.Build()
+
+	tests := []struct {
+		uri   string
+		names []string
+	}{
+		{"/a/hedge-hog", []string{"hedge-hog"}},
+		{"/a/foo/bar/baz", []string{"foo", "bar", "baz"}},
+		{"/a/zebra/", []string{"zebra"}},
+		{"/a/one/two/three/", []string{"one", "two", "three"}},
+		{"/a/squirrel/x", []string{"squirrel"}},
+	}
+
+	for _, test := range tests {
+		expectDispatch(t, http.StatusOK, h, "GET", test.uri)
+		if !stringArraysEqual(test.names, rec.lastNames()) {
+			t.Fatalf("expected %v got %v", test.names, rec.lastNames())
+		}
+		rec.clear()
+	}
+
 }
