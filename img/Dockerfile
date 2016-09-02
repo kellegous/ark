@@ -9,4 +9,4 @@ RUN apt-get update \
 
 EXPOSE 80 443 6660
 
-CMD "/usr/local/bin/dinghyd"
+CMD ["/usr/local/bin/dinghyd"]
