@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -57,25 +58,35 @@ func getRoutes(ctx *Context,
 	emitJSON(w, rts)
 }
 
+func validateRoute(r *store.Route) error {
+	if r.Name == "" {
+		return errors.New("name is required")
+	}
+
+	if r.Port == 0 {
+		return errors.New("port is required")
+	}
+
+	if len(r.Hosts) == 0 {
+		return errors.New("at least one host is required")
+	}
+
+	return nil
+}
+
 func postRoutes(ctx *Context,
 	w http.ResponseWriter,
 	r *http.Request,
 	names []string) {
 
-	var data struct {
-		Name  string
-		Port  int32
-		Hosts []string
-	}
+	var rt store.Route
 
-	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&rt); err != nil {
 		emitJSONError(w, err, http.StatusBadRequest)
 	}
 
-	rt := store.Route{
-		Name:  data.Name,
-		Port:  data.Port,
-		Hosts: data.Hosts,
+	if err := validateRoute(&rt); err != nil {
+		emitJSONError(w, err, http.StatusBadRequest)
 	}
 
 	if err := ctx.Store.Save(&rt); err != nil {
@@ -95,6 +106,12 @@ func getRoute(ctx *Context,
 		emitJSONError(w, fmt.Errorf("%s not found", names[0]), http.StatusNotFound)
 	}
 	emitJSON(w, &rt)
+}
+
+func delRoute(ctx *Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	names []string) {
 }
 
 func getBackends(ctx *Context,
@@ -161,8 +178,8 @@ func proxyToDocker(w http.ResponseWriter, r *http.Request, ctx *Context) error {
 	return bw.Flush()
 }
 
-// ListenAndServe ...
-func ListenAndServe(addr string, ctx *Context) error {
+// Handler ...
+func Handler(ctx *Context) http.Handler {
 	r := router.New()
 
 	r.Handle(router.Get, "/api/v1/routes",
@@ -180,15 +197,28 @@ func ListenAndServe(addr string, ctx *Context) error {
 			getRoute(ctx, w, r, names)
 		})
 
+	r.Handle(router.Delete, "/api/v1/routes/*",
+		func(w http.ResponseWriter, r *http.Request, names []string) {
+			delRoute(ctx, w, r, names)
+		})
+
 	r.Handle(router.Get, "/api/v1/routes/*/backends",
 		func(w http.ResponseWriter, r *http.Request, names []string) {
+			getBackends(ctx, w, r, names)
 		})
 
 	r.Handle(router.Post, "/api/v1/routes/*/backends",
 		func(w http.ResponseWriter, r *http.Request, names []string) {
+			postBackends(ctx, w, r, names)
 		})
 
-	h := r.Build()
+	return r.Build()
+}
+
+// ListenAndServe ...
+func ListenAndServe(addr string, ctx *Context) error {
+
+	h := Handler(ctx)
 
 	return http.ListenAndServe(addr, http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {

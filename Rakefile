@@ -60,7 +60,7 @@ end
 task :default => TARGS
 
 task :test do
-	sh 'go', 'test', 'dinghy/web/router'
+	sh 'go', 'test', 'dinghy/web/router', 'dinghy/store'
 end
 
 task :clean do
