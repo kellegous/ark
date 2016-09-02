@@ -99,6 +99,17 @@ func writeTo(dir string, r *store.Route) error {
 
 // Update ...
 func (s *Service) Update(rts []*store.Route) error {
+	files, err := filepath.Glob(filepath.Join(s.o.ConfigDir, "*.conf"))
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if err := os.Remove(file); err != nil {
+			return err
+		}
+	}
+
 	for _, rt := range rts {
 		if err := writeTo(s.o.ConfigDir, rt); err != nil {
 			return err

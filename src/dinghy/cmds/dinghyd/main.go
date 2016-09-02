@@ -31,7 +31,7 @@ func main() {
 
 	if err := fe.Update([]*store.Route{
 		&store.Route{
-			Name:     "kunk",
+			Name:     "kunky",
 			Port:     80,
 			Hosts:    []string{"a.kellegous.com"},
 			Backends: []string{"127.0.0.1:6070"},
