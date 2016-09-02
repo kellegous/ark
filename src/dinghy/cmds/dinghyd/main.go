@@ -21,8 +21,22 @@ func main() {
 		log.Panic(err)
 	}
 
-	fe, err := nginx.Start(nil)
+	fe, err := nginx.Start(&nginx.Options{
+		Command:   "nginx",
+		ConfigDir: "/tmp/foo",
+	})
 	if err != nil {
+		log.Panic(err)
+	}
+
+	if err := fe.Update([]*store.Route{
+		&store.Route{
+			Name:     "kunk",
+			Port:     80,
+			Hosts:    []string{"a.kellegous.com"},
+			Backends: []string{"127.0.0.1:6070"},
+		},
+	}); err != nil {
 		log.Panic(err)
 	}
 
