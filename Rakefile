@@ -47,8 +47,13 @@ file 'img/bin/dinghyd' => DEPS + FileList['src/dinghy/cmds/dinghyd/**/*'] do |t|
 		'go', 'install', 'dinghy/cmds/dinghyd')
 end
 
+def get_version()
+	tag = `git describe`.split('-')
+	return tag[0..1].join('.')
+end
+
 task :dockerize => ['img/bin/dinghyd'] do
-	vers = `git describe`
+	vers = get_version
 	sh 'docker', 'build', '-t', "dinghy:#{vers}", 'img'
 end
 
