@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+message Route {
+  string name = 1;
+  int32 port = 2;
+  repeated string hosts = 3;
+  repeated string backends = 4;
+}

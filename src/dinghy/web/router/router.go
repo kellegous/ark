@@ -42,6 +42,7 @@ type Handler func(http.ResponseWriter, *http.Request, []string)
 // Builder ...
 type Builder interface {
 	Handle(Verb, string, Handler)
+  HandleAll(string, Handler)
 	Build() http.Handler
 }
 
@@ -152,6 +153,13 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // Handle ...
 func (r *router) Handle(verb Verb, path string, h Handler) {
 	r.place(path[1:]).set(verb, h)
+}
+
+func (r *router) HandleAll(path string, h Handler) {
+  n := r.place(path[1:])
+  for i := 0; i < int(unknownVerb); i++ {
+    n.set(Verb(i), h)
+  }
 }
 
 func (r *router) Build() http.Handler {
