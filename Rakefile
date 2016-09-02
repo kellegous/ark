@@ -48,7 +48,8 @@ file 'img/bin/dinghyd' => DEPS + FileList['src/dinghy/cmds/dinghyd/**/*'] do |t|
 end
 
 task :dockerize => ['img/bin/dinghyd'] do
-	sh 'docker', 'build', '-t', 'dinghy', 'img'
+	vers = `git describe`
+	sh 'docker', 'build', '-t', "dinghy:#{vers}", 'img'
 end
 
 task :default => TARGS
