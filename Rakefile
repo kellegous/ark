@@ -58,7 +58,7 @@ end
 
 def get_version()
 	tag = `git describe`.split('-')
-	return tag[0..1].join('.')
+	return tag[0..1].join('')
 end
 
 task :dockerize => ['img/bin/dinghyd'] do
