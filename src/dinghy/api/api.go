@@ -225,7 +225,7 @@ func postBackends(ctx *Context,
 	var rt store.Route
 	err = ctx.Store.Load(names[0], &rt)
 	if err == store.ErrNotFound {
-		emitJSONError(w, fmt.Errorf("%s not found", names[0]), http.StatusNotFound)
+		emitJSONError(w, fmt.Errorf("route not found: '%s'", names[0]), http.StatusNotFound)
 		return
 	} else if err != nil {
 		emitJSONError(w, err, http.StatusInternalServerError)
