@@ -9,6 +9,8 @@ GODEPS = go_get('src', [
 	'github.com/golang/glog',
 	'github.com/golang/protobuf/...',
 	'github.com/syndtr/goleveldb/leveldb',
+	'golang.org/x/crypto/ssh/agent',
+	'golang.org/x/crypto/ssh',
 ])
 
 PROTOS = protoc('src/dinghy')
