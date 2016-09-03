@@ -35,7 +35,8 @@ def commands(paths)
 end
 
 TARGS = commands([
-	'bin/dinghyd'
+	'bin/dinghyd',
+	'bin/dinghy'
 ])
 
 file 'img/bin/dinghyd' => DEPS + FileList['src/dinghy/cmds/dinghyd/**/*'] do |t|

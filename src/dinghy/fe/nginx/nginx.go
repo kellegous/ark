@@ -111,6 +111,10 @@ func (s *Service) Update(rts []*store.Route) error {
 	}
 
 	for _, rt := range rts {
+		if len(rt.Backends) == 0 {
+			continue
+		}
+
 		if err := writeTo(s.o.ConfigDir, rt); err != nil {
 			return err
 		}
