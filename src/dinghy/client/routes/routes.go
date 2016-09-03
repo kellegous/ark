@@ -92,6 +92,25 @@ func postJSON(laddr net.Addr, uri string, src, dst interface{}) error {
 }
 
 func deleteRoute(laddr net.Addr, args []string) error {
+	req, err := http.NewRequest(
+		"DELETE",
+		urlFor(laddr, fmt.Sprintf("/api/v1/routes/%s", args[0])),
+		nil)
+	if err != nil {
+		return err
+	}
+
+	var c http.Client
+	res, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("status: %d", res.StatusCode)
+	}
+
 	return nil
 }
 
@@ -128,7 +147,7 @@ func runRoutes(laddr net.Addr, args []string) {
 	case "create":
 		exit(createRoutes(laddr, args[2:]))
 	case "rm":
-		exit(errNotImplemented)
+		exit(deleteRoute(laddr, args[2:]))
 	case "ls":
 		exit(errNotImplemented)
 	default:
