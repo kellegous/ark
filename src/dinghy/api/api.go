@@ -23,9 +23,18 @@ type Options struct {
 
 // Context ...
 type Context struct {
-	Store        *store.Store
+	Store        store.Store
 	LoadBalancer fe.Service
 	DockerDialer func() (net.Conn, error)
+}
+
+func (c *Context) update() error {
+	rts, err := c.Store.LoadAll()
+	if err != nil {
+		return err
+	}
+
+	return c.LoadBalancer.Update(rts)
 }
 
 func emitJSONError(w http.ResponseWriter, err error, status int) {
@@ -93,6 +102,10 @@ func postRoutes(ctx *Context,
 		emitJSONError(w, err, http.StatusInternalServerError)
 	}
 
+	if err := ctx.update(); err != nil {
+		emitJSONError(w, err, http.StatusInternalServerError)
+	}
+
 	emitJSON(w, &rt)
 }
 
@@ -112,6 +125,11 @@ func delRoute(ctx *Context,
 	w http.ResponseWriter,
 	r *http.Request,
 	names []string) {
+
+	// TODO(knorton): Update LB
+	if err := ctx.update(); err != nil {
+		emitJSONError(w, err, http.StatusInternalServerError)
+	}
 }
 
 func getBackends(ctx *Context,
@@ -146,6 +164,10 @@ func postBackends(ctx *Context,
 
 	rt.Backends = bes
 	if err := ctx.Store.Save(&rt); err != nil {
+		emitJSONError(w, err, http.StatusInternalServerError)
+	}
+
+	if err := ctx.update(); err != nil {
 		emitJSONError(w, err, http.StatusInternalServerError)
 	}
 

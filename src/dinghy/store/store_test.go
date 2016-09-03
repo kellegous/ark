@@ -1,7 +1,6 @@
 package store
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,7 +8,7 @@ import (
 )
 
 type testStore struct {
-	*Store
+	Store
 	dir string
 }
 
@@ -21,7 +20,7 @@ func (s *testStore) Close() error {
 	return err
 }
 
-func openTestStore(t *testing.T) (*Store, io.Closer) {
+func openTestStore(t *testing.T) Store {
 	tmp, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
@@ -32,16 +31,14 @@ func openTestStore(t *testing.T) (*Store, io.Closer) {
 		t.Fatal(err)
 	}
 
-	ts := &testStore{
+	return &testStore{
 		Store: s,
 		dir:   tmp,
 	}
-
-	return s, ts
 }
 
 func TestOpenClose(t *testing.T) {
-	_, c := openTestStore(t)
+	c := openTestStore(t)
 	defer c.Close()
 }
 
@@ -67,8 +64,8 @@ func sameRoute(a, b *Route) bool {
 }
 
 func TestSaveLoad(t *testing.T) {
-	s, c := openTestStore(t)
-	defer c.Close()
+	s := openTestStore(t)
+	defer s.Close()
 
 	a := Route{
 		Name:  "foo",
@@ -91,8 +88,8 @@ func TestSaveLoad(t *testing.T) {
 }
 
 func TestLoadAll(t *testing.T) {
-	s, c := openTestStore(t)
-	defer c.Close()
+	s := openTestStore(t)
+	defer s.Close()
 
 	routes := map[string]*Route{
 		"foo": &Route{
@@ -133,5 +130,40 @@ func TestLoadAll(t *testing.T) {
 		if !sameRoute(rt, routes[rt.Name]) {
 			t.Fatalf("expected %v got %v", rt, routes[rt.Name])
 		}
+	}
+}
+
+func TestDelete(t *testing.T) {
+	s := openTestStore(t)
+	defer s.Close()
+
+	if err := s.Save(&Route{
+		Name:  "foo",
+		Port:  80,
+		Hosts: []string{"foo"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rts, err := s.LoadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(rts) != 1 {
+		t.Fatalf("expected 1 route got %d", len(rts))
+	}
+
+	if err := s.Delete("foo"); err != nil {
+		t.Fatal(err)
+	}
+
+	rts, err = s.LoadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(rts) != 0 {
+		t.Fatalf("expected no routes got %d", len(rts))
 	}
 }

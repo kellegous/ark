@@ -9,24 +9,33 @@ import (
 var ErrNotFound = leveldb.ErrNotFound
 
 // Store ...
-type Store struct {
+type Store interface {
+	Save(*Route) error
+	Delete(string) error
+	Load(string, *Route) error
+	LoadAll() ([]*Route, error)
+	Close() error
+}
+
+// Store ...
+type store struct {
 	db *leveldb.DB
 }
 
 // Open ...
-func Open(path string) (*Store, error) {
+func Open(path string) (Store, error) {
 	db, err := leveldb.OpenFile(path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Store{
+	return &store{
 		db: db,
 	}, nil
 }
 
 // Save ...
-func (s *Store) Save(r *Route) error {
+func (s *store) Save(r *Route) error {
 	b, err := proto.Marshal(r)
 	if err != nil {
 		return err
@@ -36,7 +45,7 @@ func (s *Store) Save(r *Route) error {
 }
 
 // Load ...
-func (s *Store) Load(name string, r *Route) error {
+func (s *store) Load(name string, r *Route) error {
 	b, err := s.db.Get([]byte(name), nil)
 	if err != nil {
 		return err
@@ -46,7 +55,7 @@ func (s *Store) Load(name string, r *Route) error {
 }
 
 // LoadAll ...
-func (s *Store) LoadAll() ([]*Route, error) {
+func (s *store) LoadAll() ([]*Route, error) {
 	var rts []*Route
 
 	it := s.db.NewIterator(nil, nil)
@@ -69,7 +78,12 @@ func (s *Store) LoadAll() ([]*Route, error) {
 	return rts, nil
 }
 
+// Delete ...
+func (s *store) Delete(name string) error {
+	return s.db.Delete([]byte(name), nil)
+}
+
 // Close ...
-func (s *Store) Close() error {
+func (s *store) Close() error {
 	return s.db.Close()
 }
