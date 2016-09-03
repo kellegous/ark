@@ -5,17 +5,9 @@ ENV['PATH'] = "#{Dir.pwd}/bin:#{ENV['PATH']}"
 
 set_gopath(['.'])
 
-GODEPS = go_get('src', [
-	'github.com/golang/glog',
-	'github.com/golang/protobuf/...',
-	'github.com/syndtr/goleveldb/leveldb',
-	'golang.org/x/crypto/ssh/agent',
-	'golang.org/x/crypto/ssh',
-])
-
 PROTOS = protoc('src/dinghy')
 SRC = FileList['src/dinghy/**/*'].exclude(/src\/dinghy\/cmds\/.*/)
-DEPS = GODEPS + SRC + PROTOS
+DEPS = [:vendor] + SRC + PROTOS
 
 task :atom do
 	sh 'atom', '.'
@@ -36,7 +28,8 @@ end
 
 TARGS = commands([
 	'bin/dinghyd',
-	'bin/dinghy'
+	'bin/dinghy',
+	'bin/tester'
 ])
 
 file 'img/bin/dinghyd' => DEPS + FileList['src/dinghy/cmds/dinghyd/**/*'] do |t|
@@ -48,6 +41,19 @@ file 'img/bin/dinghyd' => DEPS + FileList['src/dinghy/cmds/dinghyd/**/*'] do |t|
 		'-v', "#{Dir.pwd}/img/bin:/go/bin",
 		'golang:1.6',
 		'go', 'install', 'dinghy/cmds/dinghyd')
+end
+
+file 'bin/govendor' do
+	sh 'go', 'get', 'github.com/kardianos/govendor'
+	FileUtils.rm_rf('src/github.com')
+end
+
+task :vendor => ['bin/govendor'] do
+	Dir.chdir('src/dinghy') do
+		sh '../../bin/govendor', 'sync'
+		sh '../../bin/govendor', 'install', '+program,vendor'
+		sh '../../bin/govendor', 'install', '+vendor'
+	end
 end
 
 def get_version()

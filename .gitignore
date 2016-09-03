@@ -1,5 +1,4 @@
 /bin
 /pkg
-/src/github.com
-/src/gopkg.in
 /img/bin
+/src/dinghy/vendor/*/

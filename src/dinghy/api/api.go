@@ -10,6 +10,9 @@ import (
 	"net/http"
 	"strings"
 
+	"golang.org/x/net/context"
+
+	"dinghy/docker"
 	"dinghy/fe"
 	"dinghy/store"
 	"dinghy/web/router"
@@ -52,6 +55,10 @@ func emitJSON(w http.ResponseWriter, data interface{}) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Panic(err)
 	}
+}
+
+func emitNoContent(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func getRoutes(ctx *Context,
@@ -145,20 +152,58 @@ func delRoute(ctx *Context,
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	emitNoContent(w)
 }
 
 func getBackends(ctx *Context,
 	w http.ResponseWriter,
 	r *http.Request,
 	names []string) {
+	// Lookup the route
 	var rt store.Route
 	err := ctx.Store.Load(names[0], &rt)
 	if err == store.ErrNotFound {
 		emitJSONError(w, fmt.Errorf("%s not found", names[0]), http.StatusNotFound)
 		return
 	}
-	emitJSON(w, rt.Backends)
+
+	ips, err := docker.ParseRefs(rt.Backends)
+	if err != nil {
+		emitJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Translate from ip address to container id
+	cids, err := docker.ToContainers(context.Background(), ips)
+	if err != nil {
+		emitJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	emitJSON(w, cids)
+}
+
+func readContainerRefs(ctx context.Context, r io.Reader) ([]string, error) {
+	var bes []string
+	if err := json.NewDecoder(r).Decode(&bes); err != nil {
+		return nil, err
+	}
+
+	cids, err := docker.ParseRefs(bes)
+	if err != nil {
+		return nil, err
+	}
+
+	ips, err := docker.ToIPAddresses(ctx, cids)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, ip := range ips {
+		bes[i] = ip.String()
+	}
+
+	return bes, nil
 }
 
 func postBackends(ctx *Context,
@@ -166,14 +211,19 @@ func postBackends(ctx *Context,
 	r *http.Request,
 	names []string) {
 
-	var bes []string
-	if err := json.NewDecoder(r.Body).Decode(&bes); err != nil {
+	bes, err := readContainerRefs(
+		context.Background(),
+		r.Body)
+	if docker.IsNotFound(err) {
+		emitJSONError(w, err, http.StatusNotFound)
+		return
+	} else if err != nil {
 		emitJSONError(w, err, http.StatusBadRequest)
 		return
 	}
 
 	var rt store.Route
-	err := ctx.Store.Load(names[0], &rt)
+	err = ctx.Store.Load(names[0], &rt)
 	if err == store.ErrNotFound {
 		emitJSONError(w, fmt.Errorf("%s not found", names[0]), http.StatusNotFound)
 		return
