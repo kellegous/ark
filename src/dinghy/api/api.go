@@ -62,6 +62,7 @@ func getRoutes(ctx *Context,
 	rts, err := ctx.Store.LoadAll()
 	if err != nil {
 		emitJSONError(w, err, http.StatusInternalServerError)
+		return
 	}
 
 	emitJSON(w, rts)
@@ -92,14 +93,17 @@ func postRoutes(ctx *Context,
 
 	if err := json.NewDecoder(r.Body).Decode(&rt); err != nil {
 		emitJSONError(w, err, http.StatusBadRequest)
+		return
 	}
 
 	if err := validateRoute(&rt); err != nil {
 		emitJSONError(w, err, http.StatusBadRequest)
+		return
 	}
 
 	if err := ctx.Store.Save(&rt); err != nil {
 		emitJSONError(w, err, http.StatusInternalServerError)
+		return
 	}
 
 	if err := ctx.update(); err != nil {
@@ -117,6 +121,7 @@ func getRoute(ctx *Context,
 	err := ctx.Store.Load(names[0], &rt)
 	if err == store.ErrNotFound {
 		emitJSONError(w, fmt.Errorf("%s not found", names[0]), http.StatusNotFound)
+		return
 	}
 	emitJSON(w, &rt)
 }
@@ -126,10 +131,21 @@ func delRoute(ctx *Context,
 	r *http.Request,
 	names []string) {
 
-	// TODO(knorton): Update LB
+	err := ctx.Store.Delete(names[0])
+	if err == store.ErrNotFound {
+		emitJSONError(w, err, http.StatusNotFound)
+		return
+	} else if err != nil {
+		emitJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
 	if err := ctx.update(); err != nil {
 		emitJSONError(w, err, http.StatusInternalServerError)
+		return
 	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func getBackends(ctx *Context,
@@ -140,6 +156,7 @@ func getBackends(ctx *Context,
 	err := ctx.Store.Load(names[0], &rt)
 	if err == store.ErrNotFound {
 		emitJSONError(w, fmt.Errorf("%s not found", names[0]), http.StatusNotFound)
+		return
 	}
 	emitJSON(w, rt.Backends)
 }
@@ -152,23 +169,28 @@ func postBackends(ctx *Context,
 	var bes []string
 	if err := json.NewDecoder(r.Body).Decode(&bes); err != nil {
 		emitJSONError(w, err, http.StatusBadRequest)
+		return
 	}
 
 	var rt store.Route
 	err := ctx.Store.Load(names[0], &rt)
 	if err == store.ErrNotFound {
 		emitJSONError(w, fmt.Errorf("%s not found", names[0]), http.StatusNotFound)
+		return
 	} else if err != nil {
 		emitJSONError(w, err, http.StatusInternalServerError)
+		return
 	}
 
 	rt.Backends = bes
 	if err := ctx.Store.Save(&rt); err != nil {
 		emitJSONError(w, err, http.StatusInternalServerError)
+		return
 	}
 
 	if err := ctx.update(); err != nil {
 		emitJSONError(w, err, http.StatusInternalServerError)
+		return
 	}
 
 	emitJSON(w, rt.Backends)

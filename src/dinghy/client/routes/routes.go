@@ -51,8 +51,25 @@ func exit(err error) {
 	os.Exit(0)
 }
 
-func postJSON(
-	laddr net.Addr, uri string, src, dst interface{}) error {
+func urlFor(laddr net.Addr, uri string) string {
+	return fmt.Sprintf("http://%s%s", laddr.String(), uri)
+}
+
+func getJSON(laddr net.Addr, uri string, dst interface{}) error {
+	res, err := http.Get(urlFor(laddr, uri))
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode >= 400 {
+		return fmt.Errorf("status: %d", res.StatusCode)
+	}
+
+	return json.NewDecoder(res.Body).Decode(dst)
+}
+
+func postJSON(laddr net.Addr, uri string, src, dst interface{}) error {
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(src); err != nil {
 		return err
@@ -72,6 +89,10 @@ func postJSON(
 	}
 
 	return json.NewDecoder(res.Body).Decode(dst)
+}
+
+func deleteRoute(laddr net.Addr, args []string) error {
+	return nil
 }
 
 func createRoutes(laddr net.Addr, args []string) error {
@@ -121,6 +142,47 @@ func backendsUsage() {
 	os.Exit(1)
 }
 
+func setBackends(laddr net.Addr, name string, args []string) error {
+	var bes []string
+	if err := postJSON(
+		laddr,
+		fmt.Sprintf("/api/v1/routes/%s/backends", name),
+		&args,
+		&bes); err != nil {
+		return err
+	}
+
+	for _, be := range bes {
+		fmt.Println(be)
+	}
+	return nil
+}
+
+func getBackends(laddr net.Addr, name string) error {
+	var bes []string
+	if err := getJSON(
+		laddr,
+		fmt.Sprintf("/api/v1/routes/%s/backends", name),
+		&bes); err != nil {
+		return err
+	}
+
+	for _, be := range bes {
+		fmt.Println(be)
+	}
+	return nil
+}
+
 func runBackends(laddr net.Addr, args []string) {
+	if len(args) < 3 {
+		backendsUsage()
+	}
+
+	switch args[2] {
+	case "set":
+		exit(setBackends(laddr, args[1], args[3:]))
+	case "get":
+		exit(getBackends(laddr, args[1]))
+	}
 	exit(errNotImplemented)
 }

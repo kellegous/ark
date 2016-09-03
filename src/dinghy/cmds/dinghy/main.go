@@ -24,9 +24,8 @@ func run(addr net.Addr, args []string) {
 	// routes ls
 	// routes rm name
 	// backends name set upstrea1 upstream2
-	// backends name ls
+	// backends name get
 
-	log.Println(args)
 	if routes.CanRun(args) {
 		routes.Run(addr, args)
 	} else {
