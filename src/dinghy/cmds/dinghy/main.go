@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
+	"net/http/httputil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -75,15 +77,18 @@ func serve(c *ssh.Client, n net.Conn) {
 		log.Println(err)
 		return
 	}
+	defer cc.Close()
+
+	log.Println(cc, n)
 
 	go func() {
-		if _, err := io.Copy(n, cc); err != nil {
+		if _, err := io.Copy(cc, io.TeeReader(n, os.Stdout)); err != nil {
 			log.Println(err)
 			n.Close()
 		}
 	}()
 
-	if _, err := io.Copy(cc, n); err != nil {
+	if _, err := io.Copy(n, io.TeeReader(cc, os.Stdout)); err != nil {
 		log.Panic(err)
 	}
 }
@@ -95,14 +100,24 @@ func runServer(c *ssh.Client) (net.Addr, error) {
 	}
 
 	go func() {
-		for {
-			n, err := l.Accept()
-			if err != nil {
-				log.Panic(err)
-			}
-
-			go serve(c, n)
+		prx := &httputil.ReverseProxy{
+			Director: func(r *http.Request) {
+				r.URL.Scheme = "http"
+				r.URL.Host = "127.0.0.1"
+			},
+			Transport: &http.Transport{
+				Dial: func(network, address string) (net.Conn, error) {
+					return c.Dial("tcp", "127.0.0.1:6660")
+				},
+				DisableKeepAlives: true,
+			},
 		}
+
+		srv := &http.Server{
+			Handler: prx,
+		}
+
+		log.Panic(srv.Serve(l))
 	}()
 
 	return l.Addr(), nil
