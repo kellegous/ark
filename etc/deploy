@@ -36,11 +36,13 @@ def copy_file(src, dst):
 def stop_ark(host, id):
     if not went_ok(ssh_sudo(
         host,
-        ['docker', 'stop', id])):
+        ['docker', 'stop', id],
+        stdout=subprocess.DEVNULL)):
         return False
     return went_ok(ssh_sudo(
         host,
-        ['docker', 'rm', id]))
+        ['docker', 'rm', id],
+        stdout=subprocess.DEVNULL))
 
 def start_ark(host, img_id):
     cmd = [
