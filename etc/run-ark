@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+import sys
+
+def main():
+    p = subprocess.Popen([
+        'docker',
+        'images',
+        '-q',
+        'ark'
+    ], stdout=subprocess.PIPE)
+
+    out, _ = p.communicate()
+
+    return subprocess.call([
+        'docker',
+        'run',
+        '-d',
+        '--restart=always',
+        '-p', '80:80',
+        '-p', '127.0.0.1:6660:6660',
+        '-v', 'ark:/data',
+        '-v', '/var/run/docker.sock:/var/run/docker.sock',
+        out.decode('utf-8').strip()
+    ])
+    pass
+
+if __name__ == '__main__':
+    sys.exit(main())

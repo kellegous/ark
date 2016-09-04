@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+
+import optparse
+import os
+import random
+import shutil
+import subprocess
+import string
+import sys
+import tempfile
+
+id_chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
+def uniq_id(size=6, chars=id_chars):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+def save_image(dst, name):
+    return subprocess.call(['docker', 'save', '-o', dst, name]) == 0
+
+def load_image(host, path, name):
+    if not went_ok(ssh_sudo(
+        host,
+        ['docker', 'load', '-i', path],
+        stdout=subprocess.DEVNULL)):
+        return False
+    ok, out, _ = ssh_sudo(
+        host,
+        ['docker', 'images', '-q', name],
+        stdout=subprocess.PIPE)
+    if not ok:
+        return False
+    return True, to_lines(out)[0]
+
+def copy_file(src, dst):
+    return subprocess.call(['scp', src, dst]) == 0
+
+def stop_ark(host, id):
+    if not went_ok(ssh_sudo(
+        host,
+        ['docker', 'stop', id])):
+        return False
+    return went_ok(ssh_sudo(
+        host,
+        ['docker', 'rm', id]))
+
+def start_ark(host, img_id):
+    cmd = [
+        'docker',
+        'run',
+        '-d',
+        '--restart=always',
+        '-p', '80:80',
+        '-p', '127.0.0.1:6660:6660',
+        '-v', '/var/run/docker.sock:/var/run/docker.sock',
+        '-v', 'ark:/data',
+        '-l', 'service=ark',
+        img_id
+    ]
+    return went_ok(ssh_sudo(host, cmd))
+
+def to_lines(out):
+    return [x.strip() for x in out.split('\n') if x.strip() != '']
+
+def find_current_ark(host):
+    def first(items):
+        if len(items) == 0:
+            return None
+        return items[0]
+    oka, out, _ = ssh_sudo(
+        host,
+        ['docker', 'ps', '-q', '-f', 'label=service=ark'],
+        stdout=subprocess.PIPE)
+    prc = first(to_lines(out))
+
+    okb, out, _ = ssh_sudo(
+        host,
+        ['docker', 'images', '-q', '-f', 'label=service=ark'],
+        stdout=subprocess.PIPE)
+    img = first(to_lines(out))
+
+    return oka and okb, prc, img
+
+def went_ok(res):
+    return res[0]
+
+def ssh_sudo(host, cmd, stdout=None, stderr=None):
+    return ssh(host, ['sudo'] + cmd, stdout=stdout, stderr=stderr)
+
+def ssh(host, cmd, stdout=None, stderr=None):
+    p = subprocess.Popen(['ssh', host] + cmd,
+        stdout=stdout,
+        stderr=stderr)
+    out, err = p.communicate()
+    if out is not None:
+        out = out.decode('utf-8')
+    if err is not None:
+        err = err.decode('utf-8')
+    return p.returncode == 0, out, err
+
+def ensure_volume(host, name):
+    if went_ok(ssh_sudo(
+        host,
+        ['docker', 'volume', 'inspect', name],
+        stdout=subprocess.DEVNULL)):
+        return True
+
+    return went_ok(ssh_sudo(
+        host,
+        ['docker', 'volume', 'create', '--name=%s' % name]))
+
+def main():
+    parser = optparse.OptionParser()
+    opts, args = parser.parse_args()
+
+    if len(args) != 2:
+        print('usage: deploy image host', file=sys.stderr)
+        return 1
+
+    img, host = args[0], args[1]
+
+    id = uniq_id(size=8)
+
+    tmp = tempfile.mkdtemp()
+    try:
+        tar = os.path.join(tmp, '%s.tar' % id)
+        dst = os.path.join('/tmp', '%s.tar' % id)
+
+        print('Saving image...')
+        if not save_image(tar, img):
+            return 1
+
+        print('Copying image...')
+        if not copy_file(tar, '%s:%s' % (host, dst)):
+            return 1
+
+        print('Setting up Volume...')
+        if not ensure_volume(host, 'ark'):
+            return 1
+
+        print('Finding existing containers...')
+        ok, old_prc, old_img = find_current_ark(host)
+        if not ok:
+            return 1
+
+        print('container = %s, image = %s' % (old_prc, old_img))
+
+        print('Loading image...')
+        ok, new_img =load_image(host, dst, img)
+        if not ok:
+            return 1
+
+        print('image = %s' % new_img)
+
+        if old_prc is not None:
+            print('Stopping previous ark (%s)...' % old_prc)
+            if not stop_ark(host, old_prc):
+                return 1
+
+        if old_img is not None and old_img != new_img:
+            print('Removing ark image (%s)...' % old_img)
+
+        print('Starting ark...')
+        if not start_ark(host, new_img):
+            return 1
+    finally:
+        shutil.rmtree(tmp)
+
+if __name__ == '__main__':
+    sys.exit(main())

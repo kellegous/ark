@@ -62,7 +62,7 @@ end
 
 task :dockerize => ['img/bin/arkd'] do
 	vers = get_version
-	sh 'docker', 'build', '-t', "ark:#{vers}", 'img'
+	sh 'docker', 'build', '-t', "ark:#{vers}", '--label=service=ark', 'img'
 end
 
 task :default => TARGS
