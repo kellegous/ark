@@ -1,6 +1,6 @@
 FROM ubuntu:xenial
 
-COPY bin/dinghyd /usr/local/bin/dinghyd
+COPY bin/arkd /usr/local/bin/arkd
 
 RUN apt-get update \
   && apt-get install -y nginx \
@@ -10,4 +10,4 @@ RUN apt-get update \
 
 EXPOSE 80 443 6660
 
-CMD ["/usr/local/bin/dinghyd"]
+CMD ["/usr/local/bin/arkd"]
