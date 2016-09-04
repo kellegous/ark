@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"text/template"
 
-	"dinghy/store"
+	"ark/store"
 )
 
 // DefaultOptions ...

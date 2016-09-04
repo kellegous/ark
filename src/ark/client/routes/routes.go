@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"dinghy/store"
+	"ark/store"
 )
 
 const (

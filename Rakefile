@@ -5,8 +5,8 @@ ENV['PATH'] = "#{Dir.pwd}/bin:#{ENV['PATH']}"
 
 set_gopath(['.'])
 
-PROTOS = protoc('src/dinghy')
-SRC = FileList['src/dinghy/**/*'].exclude(/src\/dinghy\/cmds\/.*/)
+PROTOS = protoc('src/ark')
+SRC = FileList['src/ark/**/*'].exclude(/src\/ark\/cmds\/.*/)
 DEPS = [:vendor] + SRC + PROTOS
 
 task :atom do
@@ -20,19 +20,18 @@ end
 def commands(paths)
 	paths.each do |path|
 		name = File.basename(path)
-		file path => DEPS + FileList["src/dinghy/cmds/#{name}/**/*"] do |t|
-			sh 'go', 'install', "dinghy/cmds/#{name}"
+		file path => DEPS + FileList["src/ark/cmds/#{name}/**/*"] do |t|
+			sh 'go', 'install', "ark/cmds/#{name}"
 		end
 	end
 end
 
 TARGS = commands([
-	'bin/dinghyd',
-	'bin/dinghy',
-	'bin/tester'
+	'bin/arkd',
+	'bin/ark',
 ])
 
-file 'img/bin/dinghyd' => DEPS + FileList['src/dinghy/cmds/dinghyd/**/*'] do |t|
+file 'img/bin/arkd' => DEPS + FileList['src/ark/cmds/arkd/**/*'] do |t|
 	FileUtils.mkdir_p('img/bin')
 	sh('docker',
 		'run',
@@ -40,7 +39,7 @@ file 'img/bin/dinghyd' => DEPS + FileList['src/dinghy/cmds/dinghyd/**/*'] do |t|
 		'-v', "#{Dir.pwd}/src:/go/src",
 		'-v', "#{Dir.pwd}/img/bin:/go/bin",
 		'golang:1.6',
-		'go', 'install', 'dinghy/cmds/dinghyd')
+		'go', 'install', 'ark/cmds/arkd')
 end
 
 file 'bin/govendor' do
@@ -49,7 +48,7 @@ file 'bin/govendor' do
 end
 
 task :vendor => ['bin/govendor'] do
-	Dir.chdir('src/dinghy') do
+	Dir.chdir('src/ark') do
 		sh '../../bin/govendor', 'sync'
 		sh '../../bin/govendor', 'install', '+program,vendor'
 		sh '../../bin/govendor', 'install', '+vendor'
@@ -61,15 +60,15 @@ def get_version()
 	return tag[0..1].join('')
 end
 
-task :dockerize => ['img/bin/dinghyd'] do
+task :dockerize => ['img/bin/arkd'] do
 	vers = get_version
-	sh 'docker', 'build', '-t', "dinghy:#{vers}", 'img'
+	sh 'docker', 'build', '-t', "ark:#{vers}", 'img'
 end
 
 task :default => TARGS
 
 task :test do
-	sh 'go', 'test', 'dinghy/web/router', 'dinghy/store'
+	sh 'go', 'test', 'ark/web/router', 'ark/store'
 end
 
 task :clean do

@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"dinghy/client/docker"
-	"dinghy/client/proxy"
-	"dinghy/client/routes"
+	"ark/client/docker"
+	"ark/client/proxy"
+	"ark/client/routes"
 )
 
 func usage() {

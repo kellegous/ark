@@ -12,10 +12,10 @@ import (
 
 	"golang.org/x/net/context"
 
-	"dinghy/docker"
-	"dinghy/fe"
-	"dinghy/store"
-	"dinghy/web/router"
+	"ark/docker"
+	"ark/fe"
+	"ark/store"
+	"ark/web/router"
 )
 
 // Options ...

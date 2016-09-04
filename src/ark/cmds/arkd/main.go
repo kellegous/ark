@@ -5,9 +5,9 @@ import (
 	"log"
 	"net"
 
-	"dinghy/api"
-	"dinghy/fe/nginx"
-	"dinghy/store"
+	"ark/api"
+	"ark/fe/nginx"
+	"ark/store"
 )
 
 func main() {

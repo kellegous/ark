@@ -3,7 +3,7 @@ package api
 import (
 	"testing"
 
-	"dinghy/store"
+	"ark/store"
 )
 
 type mockLoadBalancer struct {

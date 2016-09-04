@@ -1,4 +1,5 @@
 /bin
 /pkg
 /img/bin
-/src/dinghy/vendor/*/
+/src/ark/vendor/*/
+*.pb.go

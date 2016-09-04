@@ -1,6 +1,6 @@
 package fe
 
-import "dinghy/store"
+import "ark/store"
 
 // Service ...
 type Service interface {

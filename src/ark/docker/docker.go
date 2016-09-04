@@ -79,7 +79,7 @@ func newClient() (*client.Client, error) {
 		defaultHost,
 		client.DefaultVersion,
 		nil,
-		map[string]string{"User-Agent": "dinghy"})
+		map[string]string{"User-Agent": "Ark"})
 }
 
 func fetchContainerMap(
