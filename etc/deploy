@@ -16,6 +16,12 @@ def uniq_id(size=6, chars=id_chars):
 def save_image(dst, name):
     return subprocess.call(['docker', 'save', '-o', dst, name]) == 0
 
+def remove_image(host, name):
+    return went_ok(
+        host,
+        ['docker', 'rmi', name],
+        stdout=subprocess.DEVNULL)
+
 def load_image(host, path, name):
     if not went_ok(ssh_sudo(
         host,
@@ -159,6 +165,8 @@ def main():
 
         if old_img is not None and old_img != new_img:
             print('Removing ark image (%s)...' % old_img)
+            if not remove_image(host, old_img):
+                return 1
 
         print('Starting ark...')
         if not start_ark(host, new_img):
