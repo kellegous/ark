@@ -23,6 +23,7 @@ def main():
         '-p', '127.0.0.1:6660:6660',
         '-v', 'ark:/data',
         '-v', '/var/run/docker.sock:/var/run/docker.sock',
+        '-l', 'service=ark',
         out.decode('utf-8').strip()
     ])
     pass

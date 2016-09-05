@@ -17,10 +17,10 @@ def save_image(dst, name):
     return subprocess.call(['docker', 'save', '-o', dst, name]) == 0
 
 def remove_image(host, name):
-    return went_ok(
+    return went_ok(ssh_sudo(
         host,
         ['docker', 'rmi', name],
-        stdout=subprocess.DEVNULL)
+        stdout=subprocess.DEVNULL))
 
 def load_image(host, path, name):
     if not went_ok(ssh_sudo(
